@@ -1,8 +1,8 @@
-Имя бота - @fed_monitorbot
-токен - 5068203614:AAG7LxFSUq0gv6eAdK0lNdhTNtwxMLOtZXY
+Имя бота - 
+токен - 
 
-Имя бота - @fed_alarmbot
-токен - 5072329737:AAFew-CqHRRelcAS--gpBaEsweQfFdDjwO0
+Имя бота - 
+токен - 
 
 !!!Принцип работы бота!!!
 Во время первого запуска бот запоминает ID пользователя, который его запустил.
