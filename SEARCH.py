@@ -24,6 +24,135 @@ class DELETE_INN(StatesGroup):
     find_name = State()
     follow = State()
 
+class READ(StatesGroup):
+    start_com = State()
+
+@dp_fol.message_handler(commands='debtors', state=None)
+async def main(message: types.Message, state: FSMContext):
+# def main():
+    await READ.start_com.set()
+    await bot_fol.send_message(chat_id=message.from_user.id, text='Идет сбор данных ...')
+    # print('1')
+    bankrotcookie = parser.bankrotcookie()
+    # print('2')
+    ALL_NAME = [{}]
+    ALL_MESG = [{}]
+    # print('3')
+    ind_name_mesg = 1
+    defaulters_urls = db.sql_read_defaulter_url()
+    for defaulter_url in defaulters_urls:
+        # print('4')
+        id_defaulter = defaulter_url[0].split('=')[1]
+        soup = parser.get_html(defaulter_url[0], config.HEADERS_def(bankrotcookie))
+        data_defaulter = parser.parser_table_defaulter(soup, defaulter_url[0])
+
+        name = data_defaulter[0]['name']
+        all_message_new = data_defaulter[0]['all_message'].split(';')
+        del all_message_new[-1]
+
+        ALL_NAME[0][ind_name_mesg] = f'{name.strip()}@@{id_defaulter}'
+        ALL_MESG[0][ind_name_mesg] = all_message_new
+
+        ind_name_mesg += 1
+    # print('5')
+    async with state.proxy() as data:
+        data['ALL_NAME'] = ALL_NAME
+        data['ALL_MESG'] = ALL_MESG
+    # print('6')
+
+    MES = ALL_NAME[0]
+    if max(MES.keys()) > 10:
+        MES_NAME = ''
+        for k, v in ALL_NAME[0].items():
+            if k % 10 != 0:
+                MES_NAME += f'{k} - {v.split("@@")[0]}\n'
+            else:
+                # await message.answer(MES_NAME)
+                await bot_fol.send_message(chat_id=message.from_user.id, text=MES_NAME)
+                # print(MES_NAME)
+                MES_NAME = ''
+                MES_NAME += f'{k} - {v.split("@@")[0]}\n'
+        # await message.answer(MES_NAME)
+        await bot_fol.send_message(chat_id=message.from_user.id, text=MES_NAME)
+    else:
+        MES_NAME = ''
+        for k, v in ALL_NAME[0].items():
+            MES_NAME += f'{k} - {v.split("@@")[0]}\n'
+    #     print(MES_NAME)
+    #     await message.answer(MES_NAME)
+        await bot_fol.send_message(chat_id=message.from_user.id, text=MES_NAME)
+    # print(MES_NAME)
+    # await message.answer(MES_NAME)
+    await bot_fol.send_message(chat_id=message.from_user.id, text='Ведите номер должника, чтобы получить список его дел\n (Для отмены действия введите "отмена")')
+
+    # MES_NAME = ''
+    # print(ALL_NAME)
+    # for k, v in ALL_NAME[0].items():
+    #     MES_NAME += f'{k} - {v.split("@@")[0]}\n'
+    # await bot_fol.send_message(chat_id=message.from_user.id, text=MES_NAME)
+    # # await READ.next()
+    # await bot_fol.send_message(chat_id=message.from_user.id, text='Ведите номер должника, чтобы получить список его дел')
+
+    # inp1 = input('введите номер того, чьи сообщениея необходимо просмотреть: ')
+
+@dp_fol.message_handler(Text(equals='отмена', ignore_case=True), state="*")
+async def cancel_handler_fol(message: types.Message, state: FSMContext):
+    # if message.from_user.id == ID:
+    current_state = await state.get_state()
+    if current_state is None:
+        return
+    await state.finish()
+    await message.reply('OK')
+
+@dp_fol.message_handler(state=READ.start_com)
+async def find_name(message: types.Message, state: FSMContext):
+    await bot_fol.send_message(chat_id=message.from_user.id, text='Начался сбор данных о должнике')
+    bankrotcookie = parser.bankrotcookie()
+
+    async with state.proxy() as data:
+        ALL_NAME = tuple(data.values())[0]
+        ALL_MESG = tuple(data.values())[1]
+        # print(tuple(data.values())[0])
+
+    inp1 = message.text
+
+    name = ALL_NAME[0][int(inp1)]
+    id_defaulter = name.split('@@')[1]
+    # print(ALL_MESG[0][int(inp1)])
+    for href in ALL_MESG[0][int(inp1)][0:10]:
+        # print(href)
+        soup_LOT = parser.get_html(href, config.HEADERS_def(bankrotcookie))
+        LOT = parser.parser_lot(soup_LOT)
+
+        if LOT == 'Аннулировано':
+            MS_LOT = 'Аннулировано'
+        else:
+            MS_LOT = parser.create_MS_LOT(LOT)
+
+        # for user in users:
+            # try:
+        await bot_fol.send_message(chat_id=message.from_user.id, text=f"{name.split('@@')[0]}\n\n"
+                                                      f"{ALL_MESG[0][1][0]}\n\n"
+                                                      f"{MS_LOT}",
+                                   parse_mode='html',
+                                   reply_markup=InlineKeyboardMarkup().add(
+                                       InlineKeyboardButton(f"^^^ Удалить {name} ^^^",
+                                                            callback_data=f"delete {id_defaulter}")))
+            # except:
+            #     pass
+    await bot_fol.send_message(chat_id=message.from_user.id,
+                               text='Готово')
+    await state.finish()
+
+
+
+############################################################################
+@dp_fol.callback_query_handler(lambda x: x.data and x.data.startswith('delete '))
+async def follow_run(callback_query: types.CallbackQuery):
+    id_defaulter = callback_query.data.replace('delete ', '')
+    await db.sql_delete_command(id_defaulter)
+    await callback_query.answer('Вы престали отслеживать')
+
 # @dp.message_handler(commands='search')
 async def cm_start(message: types.Message):
     await SEARCH_INN.typeofsearch.set()

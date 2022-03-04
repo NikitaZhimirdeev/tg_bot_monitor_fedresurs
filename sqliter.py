@@ -54,3 +54,34 @@ class SQLighter:
     async def sql_delete_command_only(self, url_defaulter):
         self.cursor.execute('DELETE FROM follow WHERE defaulter_url == ?', (url_defaulter,))
         self.connection.commit()
+
+    #################################################
+
+    def create_table(self):
+        self.cursor.execute(
+            """CREATE TABLE IF NOT EXISTS key_word(
+           key_words TEXT);
+        """)
+        self.connection.commit()
+
+    def sql_add_key_word(self, data):
+        # async with state.proxy() as data:
+        # print(data)
+        self.cursor.execute('INSERT INTO `key_word` (key_words) VALUES(?)', (data,))
+        self.connection.commit()
+
+    def all_table(self):
+        return self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+
+    def all_key_words(self):
+        return self.cursor.execute('SELECT * FROM key_word').fetchall()
+
+    def all_key_words_exists(self, key_word):
+        """Проверяем, есть ли уже ключевое слова в базе"""
+        with self.connection:
+            result = self.cursor.execute('SELECT * FROM `key_word` WHERE `key_words` = ?', (key_word,)).fetchall()
+            return bool(len(result))
+
+    def sql_delete_key_word(self, key_word):
+        self.cursor.execute('DELETE FROM `key_word` WHERE `key_words` == ?', (key_word,))
+        self.connection.commit()

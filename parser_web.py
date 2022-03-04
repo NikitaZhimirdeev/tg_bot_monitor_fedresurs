@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup as BS4
 from selenium import webdriver
 from create_bot import dir_path
 from aiogram.utils.markdown import hlink
+from sqliter import SQLighter
+import re
 import os
 
 class PARSER():
@@ -151,7 +153,8 @@ class PARSER():
         if len(des_list) != 0:
             for word in des_list:
                 if len(word.split(':')) > 2:
-                    chars_href = word.replace(';', '').replace(',', '').replace('№', '').split(':')
+                    word_href = re.sub("[^A-Za-z0-9:]", "", word)
+                    chars_href = word_href.replace(';', '').replace(',', '').replace('№', '').split(':')
                     text_href = ''
                     for char in chars_href:
                         text_href += f'{char} %3A'
@@ -168,7 +171,7 @@ class PARSER():
                     # print(opened)
 
                     # text_href = f"https://pkk.rosreestr.ru/#/search/@5w3tqxnjb?text={text_href}{opened}"
-                    text_href = hlink(word, f"https://pkk.rosreestr.ru/#/search/@5w3tqxnjb?text={text_href}{opened}")
+                    text_href = hlink(word_href, f"https://pkk.rosreestr.ru/#/search/@5w3tqxnjb?text={text_href}{opened}")
 
                     MES += f'{text_href} '
 
@@ -178,41 +181,24 @@ class PARSER():
         else:
             return MES
 
-    # def create_ms_kad_num(self, LOT):
-    #     description = LOT[0]['Описание']
-    #     des_list = description.split(' ')
-    #     MS_KAD_NUM = ''
-    #     if len(des_list) != 0:
-    #         MS_KAD_NUM = '\nКадастровые номера и ссылки:\n'
-    #         for word in des_list:
-    #             if len(word.split(':')) > 2:
-    #                 print(word)
-    #                 # 'https://pkk.rosreestr.ru/#/search/@5w3tqxnjb?text=50%3A18%3A0090313%3A77&opened=50%3A18%3A90313%3A77'
-    #                 chars_href = word.replace('№', '').split(':')
-    #                 text_href = ''
-    #                 for char in chars_href:
-    #                     text_href += f'{char}%3A'
-    #                 text_href = text_href.strip('%3A')
-    #                 text_href += '&opened='
-    #
-    #                 opened = ''
-    #                 for char in chars_href:
-    #                     n = char.lstrip('0')
-    #                     if len(n) == 0:
-    #                         n = '0'
-    #                     opened += f'{n}%3A'
-    #                 opened = opened.strip('%3A')
-    #                 # print(opened)
-    #
-    #                 text_href = f"https://pkk.rosreestr.ru/#/search/@5w3tqxnjb?text={text_href}{opened}"
-    #
-    #                 print(text_href)
-    #                 MS_KAD_NUM += f'{word} - {text_href}\n'
-    #                 print()
-    #
-    #         if len(MS_KAD_NUM.strip('\nКадастровые номера и ссылки:\n')) == 0:
-    #             MS_KAD_NUM = ''
-    #
-    #     return MS_KAD_NUM
+    def list_key_words(self):
+        db = SQLighter(os.path.join(dir_path, 'databaseMonitor.db'))
+
+        # Проверка существования таблицы
+        all_table = db.all_table()
+        ALL_TABLE = []
+        for table in all_table:
+            ALL_TABLE.append(re.sub("[^A-Za-z_]", "", str(table)))
+        # Создание таблицы если ее нет
+        if not ('key_word' in ALL_TABLE):
+            db.create_table()
+
+        all_key_words = db.all_key_words()
+        ALL_KEY_WORDS = []
+        for key_word in all_key_words:
+            ALL_KEY_WORDS.append(re.sub("[^A-Za-zА-Яа-я ]", "", str(key_word)))
+        return ALL_KEY_WORDS
+
+
 
 

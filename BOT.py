@@ -41,7 +41,8 @@ async def START(message: types.Message):
 @dp.message_handler(commands=['help'])
 async def HELP(message: types.Message):
     await message.answer("/search - Команда поиска по ИНН\n"
-                         "Чтобы начать следить нажмите кнопку 'Следить' под интересующим вас должником\n"
+                         "Чтобы начать следить нажмите кнопку 'Следить' под интересующим вас должником\n\n"
+                         "/keyword - Команда для добавления, просмотра и удаления ключевых слов"
                          "@fed_alarmbot - Бот,в которого будут приходить сообщения по отслеживаемым должникам")
 
 
@@ -78,47 +79,52 @@ async def PARSER_WHILE():
                     if (not db.allpost_exists(a['url_message'])) and ('аннулировано' not in a['type_message']) and (not db.sql_read_defaulter_url_exists(a['url_defaulter'])):
                         # print(a['url_defaulter'])
                         db.add_message(a)
+                        # print(a)
                         # print(a['url_message'])
                         soup_LOT = parser.get_html(a['url_message'], config.HEADERS_def(bankrotcookie))
                         LOT = parser.parser_lot(soup_LOT)
-
                         # if LOT == 'Объявление о проведении торгов (аннулировано, заблокировано)':
                         #     MS_LOT = 'Объявление о проведении торгов (аннулировано, заблокировано)'
                         # elif LOT == 'Отчет оценщика об оценке имущества должника (аннулировано, заблокировано)':
                         #     MS_LOT = 'Отчет оценщика об оценке имущества должника (аннулировано, заблокировано)'
                         # else:
                         MS_LOT = parser.create_MS_LOT(LOT)
+                        # print(MS_LOT)
 
-                        # MS_KAD_NUM = parser.create_ms_kad_num(LOT)
-                        # print(LOT)
+                        ALL_KEY_WORDS = parser.list_key_words()
+                        ind_stop_key = 0
+                        for key_word in ALL_KEY_WORDS:
+                            if key_word in MS_LOT.lower():
+                                ind_stop_key += 1
 
-                        for user in users:
-                            try:
-                                # print(f"aaaaaa {a['url_defaulter']}")
-                                id = a['url_defaulter'].split('/')[-1]
+                        if ind_stop_key == 0:
+                            for user in users:
+                                try:
+                                    # print(f"aaaaaa {a['url_defaulter']}")
+                                    id = a['url_defaulter'].split('/')[-1]
 
-                                await bot.send_message(chat_id=user,
-                                                       text=f"{a['date']}\n\n"
-                                                            f"Тип сообщения - {a['type_message']}\n"
-                                                            f"Ссылка на сообщение - {a['url_message']}\n"
-                                                            f"Должник - {a['defaulter']}\n"
-                                                            f"Ссылка на должника - {a['url_defaulter']}\n"
-                                                            f"Адрес - {a['address']}\n"
-                                                            f"Кем опубликовано - {a['published']}\n\n"
-                                                            f"{MS_LOT}",
-                                                       parse_mode='html',
-                                                            # f"{MS_KAD_NUM}",
-                                                       # reply_markup=InlineKeyboardMarkup().add(
-                                                       #     InlineKeyboardButton(f'Удалить',
-                                                       #                          callback_data=f'del {ret[1]}')))
-                                                       reply_markup=InlineKeyboardMarkup().add(
-                                                           InlineKeyboardButton(f"^^^ Следить ^^^",
-                                                                                callback_data=f"fol {id}"))) # {a['defaulter']}
-                            except:
-                                pass
+                                    await bot.send_message(chat_id=user,
+                                                           text=f"{a['date']}\n\n"
+                                                                f"Тип сообщения - {a['type_message']}\n"
+                                                                f"Ссылка на сообщение - {a['url_message']}\n"
+                                                                f"Должник - {a['defaulter']}\n"
+                                                                f"Ссылка на должника - {a['url_defaulter']}\n"
+                                                                f"Адрес - {a['address']}\n"
+                                                                f"Кем опубликовано - {a['published']}\n\n"
+                                                                f"{MS_LOT}",
+                                                           parse_mode='html',
+                                                                # f"{MS_KAD_NUM}",
+                                                           # reply_markup=InlineKeyboardMarkup().add(
+                                                           #     InlineKeyboardButton(f'Удалить',
+                                                           #                          callback_data=f'del {ret[1]}')))
+                                                           reply_markup=InlineKeyboardMarkup().add(
+                                                               InlineKeyboardButton(f"^^^ Следить ^^^",
+                                                                                    callback_data=f"fol {id}"))) # {a['defaulter']}
+                                except:
+                                    pass
 
             # print('sleep')
-            await asyncio.sleep(30)
+            await asyncio.sleep(600)
 
         except:
             print('ERROR')
@@ -147,11 +153,14 @@ async def START_fol(message: types.Message):
                          'Под каждым сообщением имеется кнопка "Удалить <имя должника>", нажав ее, перестаните следить за должником\n'
                          '@fed_monitorbot - Бот,в которого приходят всеновые сообщения и где вы сможете выбрать за кем следить'
                          'Так же имеется возможность удалить должника по ссылке на его профиль на сайте, для этого введите команду /delete\n'
+                         'Команда для просмотра всех должников /debtors, при помощи данной команды вы можете просмотреть всех отслеживаемых'
+                         'должников и просмотреть лоты каждого\n'
                          'Если забудете команды введите /help или перезапустите бота')
 
 @dp_fol.message_handler(commands=['help'])
 async def HELP_fol(message: types.Message):
     await message.answer("/delete - удалить должника по ссылке на его профиль на сайте\n"
+                         "/debtors - Команда для просмотра всех должников, при помощи данной команды вы можете просмотреть всех отслеживаемых должников и просмотреть лоты каждого\n"
                          "@fed_monitorbot - Бот,в которого приходят всеновые сообщения и где вы сможете выбрать за кем следить")
 
 async def MONITOR_WHILE():
@@ -218,7 +227,7 @@ async def MONITOR_WHILE():
                     db.add_new_message_in_defaulter(message_ready, name)
 
             # print('sleep')
-            await asyncio.sleep(10)
+            await asyncio.sleep(900)
         except:
             print('ERROR')
             if indx%2 == 0:
@@ -229,7 +238,7 @@ async def MONITOR_WHILE():
             #     except:
             #         pass
             indx += 1
-            await asyncio.sleep(60)
+            await asyncio.sleep(450)
         # print('закончилась проверка follow')
 
 @dp_fol.callback_query_handler(lambda x: x.data and x.data.startswith('delete '))
@@ -269,8 +278,10 @@ async def follow_run(callback_query: types.CallbackQuery):
                 pass
 
 import SEARCH
-
 SEARCH.register_handlers_admin(dp)
+
+import add_chek_delete_key_words
+add_chek_delete_key_words.register_handlers_key_words(dp)
 
 # Запуска бота
 # loop = asyncio.get_event_loop()
